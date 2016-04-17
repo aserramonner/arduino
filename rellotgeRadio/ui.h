@@ -5,10 +5,10 @@
 #include "Display.h"
 #include "StateMachine.h"
 
-const char str_no_widgets[] PROGMEM = { "No widgets added to the setup." };
-const char str_too_many[] PROGMEM = { "Too many widgets" };
+const char str_no_widgets[] PROGMEM       = { "No widgets added to the setup." };
+const char str_too_many[] PROGMEM         = { "Too many widgets" };
 const char str_send_event_setup[] PROGMEM = { "Send event setup: " };
-const char str_current_view[] PROGMEM = { "Current view is: " };
+const char str_current_view[] PROGMEM     = { "Current view is: " };
 
 /**
  * Common interface for screens
@@ -222,14 +222,14 @@ class ClockScreen : public Screen
 public:
     enum { CLOCK, INFO, RADIO, ALARM, DATE, TEMPERATURE } View;
 
-    ClockScreen(Display *display, StateMachine *sm, Clock *clock, Radio *radio) : Screen(display)
+    ClockScreen(Display *display, StateMachine *sm, Clock *clock, FMRadio *radio) : Screen(display)
     {
-      clock_ = clock;
-      radio_ = radio;
+      sm_         = sm;
+      clock_      = clock;
+      fmRadio_    = radio;
       nowShowing_ = CLOCK;
-      currentAlarm_ = -1;
+      currentAlarm_   = -1;
       currentStation_ = 0;
-      sm_ = sm;
       
       // Place all the widgets
       timeWidget_.setBitmap(0,0, display_->getBitmap());               
@@ -251,17 +251,7 @@ public:
        if (view == CLOCK) nowShowing_ = CLOCK;
        if (view == RADIO) nowShowing_ = RADIO;
     }
-            
-    void radioOn()
-    {         
-      sm_->setAttribute(RADIO_ON);
-      // Stop the display to prevent noise
-      //display_->unlit();
-      radio_->setBandFrequency(RADIO_BAND_FM, stations[currentStation_].getStation()*10);
-      radio_->setMute(false);
-      radio_->setSoftMute(false);
-    }
-    
+                
     int8_t sendEvent(int8_t event)
     {
        // We accept OK to act in display
@@ -299,8 +289,7 @@ public:
             uint8_t attrs = sm_->getAttributes();
             if ((attrs&RADIO_ON)&&(currentStation_==-1))
             {
-              sm_->clearAttribute(RADIO_ON);
-              radio_->setMute(true);
+              fmRadio_->switchOff();
             }
             else if (attrs&RADIO_ON)
             {
@@ -312,13 +301,14 @@ public:
               else
               {
                 Serial.println(stations[currentStation_].getStation());
-                radio_->setBandFrequency(RADIO_BAND_FM, stations[currentStation_].getStation()*10);
+                //radio_->setBandFrequency(RADIO_BAND_FM, stations[currentStation_].getStation()*10);
+                fmRadio_->setStation(currentStation_);
               }
             }
             else
             {
               currentStation_ = 0;
-              radioOn();
+              fmRadio_->switchOn();
               bottomText_.setBlink(true);
               blinks_ = 6;
             }
@@ -331,16 +321,20 @@ public:
           if  (sm_->getAttributes() & RADIO_ON)
           {
             // Stop the radio no matter what
-            sm_->clearAttribute(RADIO_ON);
-            radio_->setMute(true);
+            fmRadio_->switchOff();
           }
           else
           {
             // Sleep mode
-            radioOn();
-            timer.set(59);
+            fmRadio_->switchOn();
+            //timer.set(59);
           }
           
+          return -1;
+       }
+       else if (event == TOGGLE_DISPLAY)
+       {
+          display_->toggleState();
           return -1;
        }
        
@@ -367,7 +361,7 @@ public:
             
       // Get the day (1=monday) also used in many views      
       dayOfWeek = time.dayOfWeek();
-            
+      
       switch(nowShowing_)
       {
       case ALARM:
@@ -386,8 +380,12 @@ public:
           break;
           
       case TEMPERATURE:
-          sprintf(infoString, "%d'C", clock_->getTempAsWord()/4);
-          bottomText_.setText(infoString);
+          {
+            int t = clock_->getTempAsWord();
+            //sprintf(infoString, "%d.%d'C", t>>8, t&0xFF);
+            sprintf(infoString, "%d'C", t>>8);
+            bottomText_.setText(infoString);
+          }
           break;
 
       case RADIO:
@@ -430,7 +428,7 @@ private:
    Clock *clock_;
    StateMachine *sm_;
    
-   Radio *radio_;
+   FMRadio *fmRadio_;
    
    // The active view
    byte nowShowing_;

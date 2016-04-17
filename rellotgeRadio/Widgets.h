@@ -395,6 +395,8 @@ public:
   
   void set(int16_t dow)
   {
+    // sunday=0
+    dow = dow==0?7:dow;
     dayOfWeek_ = dow;
   }  
   

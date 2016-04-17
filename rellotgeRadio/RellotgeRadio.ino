@@ -19,10 +19,12 @@ typedef SI4705 Radio;
 #define ANALOG_VOLUME A0
 // Analog pin used for light sensor
 #define ANALOG_LIGHT  A1
+// AMP output
+#define MUTE_PIN 5
 
 #include "Display.h"
-#include "Radio.h"
 #include "StateMachine.h"
+#include "Radio.h"
 #include "Alarms.h"
 #include "Widgets.h"
 #include "ui.h"
@@ -32,11 +34,6 @@ typedef SI4705 Radio;
 #define SDATA                A4
 #define SCLOCK               A5
 Clock rtc;
-
-// FM radio
-// Pin where the radio reset is connected
-#define RADIO_RESET 5
-Radio radio;
 
 // LED display
 #define DATA 2
@@ -57,6 +54,7 @@ StateMachine stateMachine = StateMachine(ST_LAST, EV_LAST, &(globalTransitions_[
 #define NUM_SCREENS        6
 
 Screen *screens[NUM_SCREENS];
+FMRadio *fmRadio;
 
 Buttons buttons;
 
@@ -76,21 +74,12 @@ void debug(const char *pgmstr)
 void setup() {
   Serial.begin(9600);
   debug(str_starting);
-  // Radio reset
-  pinMode(RADIO_RESET, OUTPUT);
-  digitalWrite(RADIO_RESET, LOW);
-  delay(200);
-  digitalWrite(RADIO_RESET, HIGH);
-  delay(200);
-  radio.init();
-  delay(200);
-  radio.setMono(true);
-  radio.setMute(true);
-  radio.debugEnable();
+  // Start the radio
+  fmRadio = new FMRadio(&stateMachine, &radio);
   
   display.initDisplay();
   // Create the UI screens
-  screens[SCREEN_CLOCK]       = new ClockScreen(&display, &stateMachine, &rtc, &radio);
+  screens[SCREEN_CLOCK]       = new ClockScreen(&display, &stateMachine, &rtc, fmRadio);
   screens[SCREEN_MENU]        = new MenuScreen(&display, &stateMachine, &rtc);
   screens[SCREEN_DATE_SETUP]  = new DateSetup(&display, &rtc);
   screens[SCREEN_TIME_SETUP]  = new TimeSetup(&display, &rtc);
@@ -101,6 +90,9 @@ void setup() {
   // Read the NVM
   for(byte i=0; i<MAX_ALARMS; i++)   alarms[i].readAlarmFromNvm(i);
   for(byte i=0; i<MAX_STATIONS; i++) stations[i].readStationFromNvm(i);
+  
+  pinMode(MUTE_PIN, OUTPUT);
+  digitalWrite(MUTE_PIN, 0);
 }
 
 uint8_t currentScreen = SCREEN_CLOCK;
@@ -117,6 +109,7 @@ int8_t readButtons()
    if (b == Buttons::BT_OK)   evt = OK;
    
    if (b == (Buttons::BT_DOWN|Buttons::BT_OK)) evt = SLEEP_OFF;
+   if (b == (Buttons::BT_UP|Buttons::BT_DOWN)) evt = TOGGLE_DISPLAY;
    
    return evt;
 }
@@ -147,10 +140,8 @@ void loop()
     
     if (event != -1)
     {
-      stateMachine.setAttribute(RADIO_ON); 
-      radio.setBandFrequency(RADIO_BAND_FM, stations[0].getStation()*10);
-      radio.setMute(false);
-      radio.setSoftMute(false);
+      // Trigger the alarm
+      fmRadio->switchOn();
     }
   }
   

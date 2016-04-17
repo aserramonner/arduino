@@ -23,6 +23,10 @@ public:
      time_ = DateTime(0,0,0,hour,minute,0);
   }
   
+  /**
+   * day==0 means monday
+   * day==7 means sunday
+   */
   bool isEnabled(byte day)
   {
     return ((daysOfWeek_>>day)&1);
@@ -72,7 +76,8 @@ public:
 
    bool check(const DateTime &t)
    {
-      bool day = isEnabled(t.dayOfWeek());
+      // sunday is day 0 and we want day 0 to be monday, so we shift the day 7 days up
+      bool day = isEnabled((t.dayOfWeek()+7)%8);
       return ((t.hour() == time_.hour())&&(t.minute() == time_.minute())) && day;
    }
    

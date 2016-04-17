@@ -28,7 +28,7 @@ enum { ST_NULL=0,
        ST_INFO,
        ST_LAST } State;
 
-enum { UP=0, DOWN=1, OK=2, EV_LAST, SLEEP_OFF } Events;
+enum { UP=0, DOWN=1, OK=2, EV_LAST, SLEEP_OFF, TOGGLE_DISPLAY } Events;
 
 class StateMachine
 {

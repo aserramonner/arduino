@@ -61,13 +61,15 @@ class Display : public HT1632LEDMatrix
 public:
     Display(uint8_t data, uint8_t wr, uint8_t cs) : HT1632LEDMatrix(data, wr, cs)
     {
-       high_ = 0;
-       low_  = 1024;
+       enabled_ = true;
+       high_    = 0;
+       low_     = 1024;
        brightness_ = 0;
     }
     
     void initDisplay()
     {
+       enabled_ = true;
        begin(HT1632_COMMON_16NMOS);  
        setBrightness(brightness_);
        clearScreen();
@@ -75,7 +77,14 @@ public:
     
     void unlit()
     {
+      enabled_ = false;
       end();
+    }
+    
+    void toggleState()
+    {
+       if (enabled_) unlit();
+       else initDisplay();
     }
     
     void idle()
@@ -130,6 +139,7 @@ private:
     int8_t low_;
     byte brightness_;
     Bitmap bitmap_;
+    bool enabled_;
 };
 
 #endif
