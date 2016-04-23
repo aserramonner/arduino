@@ -229,7 +229,6 @@ public:
       fmRadio_    = radio;
       nowShowing_ = CLOCK;
       currentAlarm_   = -1;
-      currentStation_ = 0;
       
       // Place all the widgets
       timeWidget_.setBitmap(0,0, display_->getBitmap());               
@@ -285,32 +284,15 @@ public:
           }
           else if (nowShowing_ == RADIO)
           {
-            // Start the radio
+            // Start the radio or change the station
             uint8_t attrs = sm_->getAttributes();
-            if ((attrs&RADIO_ON)&&(currentStation_==-1))
+            if (attrs&RADIO_ON)
             {
-              fmRadio_->switchOff();
-            }
-            else if (attrs&RADIO_ON)
-            {
-              currentStation_++;
-              if (currentStation_ == MAX_STATIONS)
-              {
-                currentStation_ = -1;
-              }
-              else
-              {
-                Serial.println(stations[currentStation_].getStation());
-                //radio_->setBandFrequency(RADIO_BAND_FM, stations[currentStation_].getStation()*10);
-                fmRadio_->setStation(currentStation_);
-              }
+              fmRadio_->nextStation();
             }
             else
             {
-              currentStation_ = 0;
               fmRadio_->switchOn();
-              bottomText_.setBlink(true);
-              blinks_ = 6;
             }
             
             return -1;
@@ -343,7 +325,7 @@ public:
     
     void hide()
     {
-       bottomText_.setBlink(false);
+       //bottomText_.setBlink(false);
     }
     
     void show(int8_t state)
@@ -382,21 +364,21 @@ public:
       case TEMPERATURE:
           {
             int t = clock_->getTempAsWord();
-            //sprintf(infoString, "%d.%d'C", t>>8, t&0xFF);
             sprintf(infoString, "%d'C", t>>8);
             bottomText_.setText(infoString);
           }
           break;
 
       case RADIO:
+#if 0      
           if ((currentStation_==-1) && (sm_->getAttributes()&RADIO_ON)) sprintf(infoString, "Off");
           else if (currentStation_==-1) sprintf(infoString, "Radio Off");
           else sprintf(infoString, "%d.%d", stations[currentStation_].getStation()/10, stations[currentStation_].getStation()%10);
+#else
+          sprintf(infoString, "%d.%d", fmRadio_->getFrequency()/10, fmRadio_->getFrequency()%10);
+#endif
           bottomText_.setText(infoString);
-          blinks_--;
-          if (blinks_==0) bottomText_.setBlink(false);
           break;
-          
       }
 
       // Everything that has to be painted must be done here      
@@ -566,7 +548,7 @@ public:
       // Override the alarm days in the widget with the contents of the alarms
       ad_.setAlarms(alarms);
       ad_.setCurrent(currentAlarm_);
-      day_.set(0);
+      day_.reset();
    }
    
    void setInitialView(uint8_t mode)
@@ -669,7 +651,7 @@ public:
    {
       int16_t frequency;
       
-      // Read the first alarm
+      // Read the first station
       frequency = stations[currentStation_].getStation();
       tuneWidget_.set(frequency);
    }
@@ -683,7 +665,7 @@ public:
 
       currentStation_ = 0;
             
-      // Read the first alarm
+      // Read the first station
       loadStation(currentStation_);
       
       // Place the widgets for the setup

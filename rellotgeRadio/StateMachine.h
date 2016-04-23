@@ -40,6 +40,7 @@ public:
       numStates_ = numStates;
       numEvents_ = numEvents;
       transitions_ = transitions;
+      attributes_ = NONE;
     }
     
     int8_t idle()

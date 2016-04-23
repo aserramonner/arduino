@@ -221,7 +221,7 @@ public:
        }
      }
      
-     //if (attributes_ & ATTR_BLINK) attributes_ ^= ATTR_INKED;
+     if (attributes_ & ATTR_BLINK) attributes_ ^= ATTR_INKED;
      
      if (attributes_ & ATTR_INKED)
      {
@@ -391,6 +391,11 @@ public:
   void draw()
   {
     setText(dayStr_[dayOfWeek_]);
+  }
+
+  void reset()
+  {
+    dayOfWeek_ = 0;
   }
   
   void set(int16_t dow)

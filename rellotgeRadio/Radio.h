@@ -60,15 +60,18 @@ private:
    int16_t tune_;
 };
 
-Station stations[MAX_STATIONS];
+Station stations[MAX_STATIONS]; 
 
 class FMRadio
 {
 public:
    FMRadio(StateMachine *sm, Radio *radio)
    {
-      sm_    = sm;
-      radio_ = radio;
+      sm_     = sm;
+      radio_  = radio;
+      volume_ = 0;
+
+      currentStation_ = 0;
       
       // Radio reset
       pinMode(RADIO_RESET, OUTPUT);
@@ -82,31 +85,51 @@ public:
       radio_->setMute(true);
       radio_->debugEnable();
    }
-   
-   void setStation(int station)
-   {
-      radio_->setBandFrequency(RADIO_BAND_FM, stations[station].getStation()*10);
+
+   void nextStation()
+   {   
+      // Change the station
+      currentStation_ = (currentStation_ + 1)%MAX_STATIONS;
+      Serial.println(stations[currentStation_].getStation());
+      radio_->setBandFrequency(RADIO_BAND_FM, stations[currentStation_].getStation()*10);
    }
-   
+
+   int16_t getFrequency()
+   {
+      return stations[currentStation_].getStation();
+   }
+
    void switchOn()
    {
-      sm_->setAttribute(RADIO_ON); 
-      radio_->setBandFrequency(RADIO_BAND_FM, stations[0].getStation()*10);
+      Serial.println("switchOn");
       radio_->setMute(false);
       radio_->setSoftMute(false);
+      delay(400);
       digitalWrite(MUTE_PIN, 1);
+      radio_->setBandFrequency(RADIO_BAND_FM, stations[currentStation_].getStation()*10);
+      radio_->setVolume(volume_);
+      sm_->setAttribute(RADIO_ON); 
    }
-   
+
    void switchOff()
    {
+     Serial.println("switchOff");
      // Stop the radio no matter what
      sm_->clearAttribute(RADIO_ON);
      radio_->setMute(true);
      digitalWrite(MUTE_PIN, 0);
    }
-   
+
+   void setVolume(uint8_t vol)
+   {
+     volume_ = vol;
+     radio_->setVolume(volume_);
+   }
+
 private:
    StateMachine *sm_;
    Radio *radio_;
+   uint8_t volume_;
+   uint8_t currentStation_;
 };
 

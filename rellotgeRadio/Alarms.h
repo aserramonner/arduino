@@ -96,11 +96,12 @@ int8_t evaluateAlarms(Clock *rtc)
       if (alarms[a].check(t))
       {
          // raise alarm
-         digitalWrite(12, HIGH);
+         digitalWrite(13, HIGH);
          debug(str_alarm_raised);
          return a;
-      }  
+      }
    }
-      
+   
+   digitalWrite(13, LOW);
    return -1;
 }

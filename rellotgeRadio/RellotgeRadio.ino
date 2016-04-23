@@ -124,25 +124,27 @@ void loop()
 {    
   int8_t attributes = stateMachine.getAttributes();
   
-  if (attributes&RADIO_ON)
+  if ((attributes & RADIO_ON) == 0)
   {
-    int8_t vol = readVolume();
-    if (vol!=lastVolume) 
-    {
-      radio.setVolume(vol);
-      lastVolume = vol;
-    }
-  }
-  else
-  {
-    // Evaluate the alarms
+    // If the radio is off, evaluate the alarms
     int8_t event = evaluateAlarms(&rtc);
     
     if (event != -1)
     {
       // Trigger the alarm
+      // and switch off the screen
+      // to reduce interferences
       fmRadio->switchOn();
+      display.unlit();
     }
+  }
+
+  // Always set the volume
+  int8_t vol = readVolume();
+  if (vol!=lastVolume) 
+  {
+    fmRadio->setVolume(vol);
+    lastVolume = vol;
   }
   
   // Poll the buttons
